@@ -2,5 +2,4 @@ language: go
 go:
  - tip
 script:
- - go build -race
- - go test -v
+ - go test -v -race

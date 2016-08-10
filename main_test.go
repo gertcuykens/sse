@@ -2,38 +2,26 @@ package sse
 
 import (
 	"fmt"
-	"log"
-	"net/http"
-	"os"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 )
 
-// TestMain Handler.
-func TestMain(m *testing.M) {
+// TestSSE client.
+func TestSSE(t *testing.T) {
 	handler := NewHandler()
+	server := httptest.NewTLSServer(handler)
 	go func() {
-		for {
+		for i := 0; i < 3; i++ {
 			time.Sleep(time.Second * 1)
 			eventString := fmt.Sprintf("%v", time.Now())
 			fmt.Println("SSE->:", eventString)
 			handler.Push <- []byte("data: " + eventString + "\n\n")
 		}
+		server.Close()
 	}()
-	go func() {
-		log.Fatal("HTTPS server error: ",
-			http.ListenAndServeTLS(":8080",
-				"public.pem",
-				"private.pem",
-				handler))
-	}()
-	os.Exit(m.Run())
-}
-
-// TestSSE client.
-func TestSSE(t *testing.T) {
-	client, err := NewSource("https://localhost:8080/sse", "SSE ID")
+	client, err := NewSource(server.URL, "SSE ID")
 	if err != nil {
 		t.Error(err)
 	}
@@ -42,7 +30,7 @@ func TestSSE(t *testing.T) {
 		fmt.Print("SSE<-: ", string(event.Data))
 	}
 	client.Close()
-	time.Sleep(1 * time.Second)
+	time.Sleep(time.Second * 1)
 }
 
 // Test Stream
@@ -57,6 +45,5 @@ func TestStream(t *testing.T) {
 		fmt.Println("ID:", string(event.ID))
 		fmt.Println("Type:", string(event.Type))
 		fmt.Println("Data:", string(event.Data))
-		fmt.Println("Retry: ", client.Err, client.Retry)
 	}
 }
