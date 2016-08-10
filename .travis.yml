@@ -1,6 +1,6 @@
 language: go
 go:
  - tip
-scritp:
+script:
  - go build -race
  - go test -v
