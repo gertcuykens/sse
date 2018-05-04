@@ -3,7 +3,6 @@ package sse
 import (
 	"compress/gzip"
 	"fmt"
-	"log"
 	"net/http"
 )
 
@@ -47,25 +46,26 @@ func (handler *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	handler.newClient <- messageChan
 
 	notify := w.(http.CloseNotifier).CloseNotify()
-	go func() {
-		<-notify
-		handler.closeClient <- messageChan
-	}()
-
 	zw := gzip.NewWriter(w)
 	for {
-		_, err := zw.Write(<-messageChan)
-		if err != nil {
-			fmt.Println(err)
+		select {
+		case <-notify:
+			handler.closeClient <- messageChan
+			if err := zw.Close(); err != nil {
+				fmt.Println(err)
+			}
+			return
+		default:
+			_, err := zw.Write(<-messageChan)
+			if err != nil {
+				fmt.Println(err)
+			}
+			err = zw.Flush()
+			if err != nil {
+				fmt.Println(err)
+			}
+			flusher.Flush()
 		}
-		err = zw.Flush()
-		if err != nil {
-			fmt.Println(err)
-		}
-		flusher.Flush()
-	}
-	if err := zw.Close(); err != nil {
-		log.Fatal(err)
 	}
 }
 
