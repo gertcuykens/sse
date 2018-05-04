@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html style="height: 100%;">
+  <head>
+    <title>SSE</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  </head>
+  <body style="height: 100%; width: 100%; padding: 0; margin: 0;">
+    <script>
+      var sse = new EventSource('/sse');
+      sse.onmessage = function(e) {
+        console.log('SSE<-:', e.data)
+      }
+    </script>
+  </body>
+</html>

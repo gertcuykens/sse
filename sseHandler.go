@@ -1,9 +1,9 @@
 package sse
 
 import (
-	"bytes"
+	"compress/gzip"
 	"fmt"
-	"io"
+	"log"
 	"net/http"
 )
 
@@ -30,7 +30,6 @@ func NewHandler() (handler *Handler) {
 }
 
 func (handler *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		http.Error(w, "No stream!", http.StatusInternalServerError)
@@ -40,6 +39,8 @@ func (handler *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("Content-Encoding", "gzip")
+	w.Header().Set("Transfer-Encoding", "chunked")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	messageChan := make(chan []byte)
@@ -51,12 +52,21 @@ func (handler *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		handler.closeClient <- messageChan
 	}()
 
+	zw := gzip.NewWriter(w)
 	for {
-		//fmt.Fprint(w, string(<-messageChan))
-		io.Copy(w, bytes.NewReader(<-messageChan))
+		_, err := zw.Write(<-messageChan)
+		if err != nil {
+			fmt.Println(err)
+		}
+		err = zw.Flush()
+		if err != nil {
+			fmt.Println(err)
+		}
 		flusher.Flush()
 	}
-
+	if err := zw.Close(); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func (handler *Handler) listen() {

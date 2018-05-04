@@ -40,10 +40,10 @@ func TestStream(t *testing.T) {
 		Stream: make(chan Event, 1024),
 	}
 	go stream(body, client)
-	for i := 0; i < 2; i++ {
-		event := <-client.Stream
-		fmt.Println("ID:", string(event.ID))
-		fmt.Println("Type:", string(event.Type))
-		fmt.Println("Data:", string(event.Data))
-	}
+	event := <-client.Stream
+	fmt.Println("ID:", string(event.ID))
+	fmt.Println("Type:", string(event.Type))
+	fmt.Println("Data:", string(event.Data))
+	event = <-client.Stream
+	fmt.Println(string(event.Data))
 }

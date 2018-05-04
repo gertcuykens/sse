@@ -106,5 +106,4 @@ func stream(body io.Reader, client *Client) {
 
 	client.Err = s.Err()
 	client.Close()
-
 }
