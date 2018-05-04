@@ -10,23 +10,23 @@ import (
 	"strconv"
 )
 
-// Client Source.
-type Client struct {
+// Conn SSE
+type Conn struct {
 	Stream chan Event
 	Err    error
 	Retry  int
 	close  chan struct{}
 }
 
-// Event Source.
+// Event SSE
 type Event struct {
 	ID   string
 	Type string
 	Data []byte
 }
 
-// NewSource Client.
-func NewSource(url string, id string) (*Client, error) {
+// NewConn SSE
+func NewConn(url string, id string) (*Conn, error) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
@@ -42,30 +42,30 @@ func NewSource(url string, id string) (*Client, error) {
 	}
 	fmt.Println("Client Connected.")
 
-	client := &Client{
+	conn := &Conn{
 		Stream: make(chan Event, 1024),
 		close:  make(chan struct{}),
 	}
 
 	go func() {
-		<-client.close
+		<-conn.close
 		res.Body.Close()
-		close(client.Stream)
+		close(conn.Stream)
 		fmt.Println("Client Closed.")
 	}()
 
-	go stream(res.Body, client)
+	go stream(res.Body, conn)
 
-	return client, nil
+	return conn, nil
 }
 
-// Close Client.
-func (c *Client) Close() error {
+// Close Conn.
+func (c *Conn) Close() error {
 	c.close <- struct{}{}
 	return nil
 }
 
-func stream(body io.Reader, client *Client) {
+func stream(body io.Reader, conn *Conn) {
 	s := bufio.NewScanner(body)
 	s.Split(bufio.ScanLines)
 
@@ -73,7 +73,7 @@ func stream(body io.Reader, client *Client) {
 	for s.Scan() {
 		line := s.Bytes()
 		if len(line) == 0 {
-			client.Stream <- event
+			conn.Stream <- event
 			event = Event{}
 		}
 		field := line
@@ -97,13 +97,13 @@ func stream(body io.Reader, client *Client) {
 			event.ID = string(value)
 		case "retry":
 			if i, err := strconv.Atoi(string(value)); err != nil {
-				client.Retry = i
+				conn.Retry = i
 			}
 		default:
 			// Ignored
 		}
 	}
 
-	client.Err = s.Err()
-	client.Close()
+	conn.Err = s.Err()
+	conn.Close()
 }

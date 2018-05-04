@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// TestSSE client.
+// TestSSE Conn
 func TestSSE(t *testing.T) {
 	handler := NewHandler()
 	server := httptest.NewTLSServer(handler)
@@ -21,29 +21,29 @@ func TestSSE(t *testing.T) {
 		}
 		server.Close()
 	}()
-	client, err := NewSource(server.URL, "SSE ID")
+	conn, err := NewConn(server.URL, "SSE ID")
 	if err != nil {
 		t.Error(err)
 	}
 	for i := 0; i < 3; i++ {
-		event := <-client.Stream
+		event := <-conn.Stream
 		fmt.Print("SSE<-: ", string(event.Data))
 	}
-	client.Close()
+	conn.Close()
 	time.Sleep(time.Second * 1)
 }
 
-// Test Stream
+// Test stream
 func TestStream(t *testing.T) {
 	body := strings.NewReader("id:1 2\nevent:A B\nretry:2\ndata: test\n\ndata: testA\ndata: testB\n\n")
-	client := &Client{
+	conn := &Conn{
 		Stream: make(chan Event, 1024),
 	}
-	go stream(body, client)
-	event := <-client.Stream
+	go stream(body, conn)
+	event := <-conn.Stream
 	fmt.Println("ID:", string(event.ID))
 	fmt.Println("Type:", string(event.Type))
 	fmt.Println("Data:", string(event.Data))
-	event = <-client.Stream
+	event = <-conn.Stream
 	fmt.Println(string(event.Data))
 }
